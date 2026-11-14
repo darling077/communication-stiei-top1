@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>创废星辉环保科普小闯关</title>
+    <style>
+        /* 基础样式复位 */
+        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent;}
+        body, html { width: 100%; height: 100%; overflow: hidden; font-family: sans-serif; }
+        
+        #app {
+            width: 100vw; height: 100vh;
+            display: flex; flex-direction: column;
+            transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1);
+            transform: translateY(0); 
+        }
+        
+        .page {
+            width: 100vw; height: 100vh;
+            flex-shrink: 0;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            position: relative;
+            overflow: hidden;
+        }
+
+        img { max-width: 100%; max-height: 100%; object-fit: contain; }
+
+        /* 抖动动画 */
+        @keyframes pageShake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-10px); }
+            20%, 40%, 60%, 80% { transform: translateX(10px); }
+        }
+        .shake-anim { animation: pageShake 0.5s; }
+
+        /* --- 第1页 --- */
+        #page1 { background-image: url('bg1.png'); display: flex; flex-direction: column; justify-content: flex-end; align-items: center; padding-bottom: 15%; }
+        #start-btn { width: 280px; cursor: pointer; transition: transform 0.1s; } 
+        #start-btn:active { transform: scale(0.95); }
+
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0,0,0,0.6); z-index: 9999;
+            display: none; justify-content: center; align-items: center;
+        }
+        .modal-overlay.show { display: flex; }
+        .modal-content {
+            background: #fff; padding: 25px 20px; border-radius: 10px; width: 85%; max-width: 320px;
+            display: flex; flex-direction: column; gap: 15px;
+        }
+        .modal-content h3 { text-align: center; color: #333; font-size: 18px;}
+        .modal-content input, .modal-content select { 
+            padding: 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 15px; outline: none; background: #fff; width: 100%; 
+        }
+        .modal-content button { padding: 12px; background: #007BFF; color: white; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; }
+
+        /* --- 第2页 --- */
+        #page2 { background-image: url('bg2.png'); display: flex; flex-direction: column; }
+        .scroll-list {
+            position: absolute; top: 5%; left: 5%; width: 90%; height: 45%; 
+            overflow-y: auto; -webkit-overflow-scrolling: touch;
+            display: flex; flex-direction: column; align-items: center;
+            gap: 15px; padding: 10px; z-index: 10;
+        }
+        .scroll-list::-webkit-scrollbar { display: none; }
+        .drag-item { 
+            width: 50%; height: 60px; background: rgba(255, 255, 255, 0.85);
+            border-radius: 30px; border: 2px solid #fff;
+            display: flex; justify-content: center; align-items: center;
+            touch-action: none; box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            position: relative; flex-shrink: 0;
+        }
+        .drag-item img { height: 45px; pointer-events: none; }
+        .drag-item.dragging { transform: scale(1.1); box-shadow: 0 10px 20px rgba(0,0,0,0.3); border-color: #4CAF50; }
+        
+        .trash-bins { position: absolute; bottom: 2%; width: 100%; height: 45%; display: flex; flex-wrap: wrap; justify-content: center; align-content: space-around; z-index: 5;}
+        .bin-wrapper { width: 45%; height: 45%; display: flex; justify-content: center; align-items: center; }
+        .bin-wrapper img { width: 90%; height: 100%; object-fit: contain; transition: transform 0.1s;}
+        .bin-active { transform: scale(1.1); filter: brightness(1.2); }
+
+        /* --- 💡 第3、4页 --- */
+        #page3 { background-image: url('页面3.png'); }
+        #page4 { background-image: url('页面4.png'); }
+        
+        /* 第3页：文字区域 */
+        .book-text-area { 
+            position: absolute; 
+            top: 25%; left: 20%; width: 45%; height: 42%; 
+            display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; 
+        }
+        /* 第3页：爱心 */
+        #page3 .like-btn { position: absolute; bottom: 28%; left: 30%; width: 50px; height: 50px; cursor: pointer; z-index: 10; transition: transform 0.1s;}
+        
+        /* 💡 第4页排版（保留了你调好的完美坐标） */
+        #page4 .book-text-area {
+            position: absolute;
+            top: 20%;        
+            left: 35%;       
+            width: 45%;      
+            height: 50%;     
+            display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; 
+        }
+        /* 💡 第4页爱心 */
+        #page4 .like-btn { 
+            position: absolute; 
+            bottom: 28%;     
+            left: 60%;       
+            width: 50px; height: 50px;
+            cursor: pointer; z-index: 10; transition: transform 0.1s;
+        }
+        
+        .book-text-area p {
+            font-size: 16px; line-height: 1.8; color: #222; width: 100%; transition: opacity 0.3s; 
+        }
+        .book-text-area p.fade-out { opacity: 0; }
+        .like-btn:active { transform: scale(0.9); }
+
+        /* 箭头位置（只在第3页） */
+        .next-arrow {
+            position: absolute; bottom: 4%; left: 65%; width: 60px; cursor: pointer; z-index: 10;
+            animation: bounceRight 1.5s infinite; 
+        }
+        @keyframes bounceRight {
+            0%, 100% { transform: translateX(0); }
+            50% { transform: translateX(15px); }
+        }
+
+        /* --- 第5页 --- */
+        #page5 { background-image: url('页面5.png'); }
+        .game-board {
+            position: absolute; top: 15%; left: 10%; width: 80%; height: 50%;
+            border: 3px solid #00ffff; display: grid; grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(4, 1fr); 
+            gap: 5px; padding: 10px; background: rgba(255,255,255,0.1);
+        }
+        .cell { position: relative; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center;}
+        .cell img { width: 90%; height: 90%; cursor: pointer; transition: transform 0.2s; }
+        .selected { border: 2px dashed #fff; border-radius: 5px; background: rgba(255,255,255,0.3); }
+        .score-board { position: absolute; top: 5%; width: 100%; text-align: center; font-size: 20px; font-weight: bold; color: #fff; text-shadow: 1px 1px 2px #000;}
+
+        @keyframes popIn { 0% { transform: scale(0); } 100% { transform: scale(1); } }
+        @keyframes popOut { 0% { transform: scale(1); } 50% { transform: scale(1.2); } 100% { transform: scale(0); opacity: 0; } }
+        .animate-in { animation: popIn 0.3s ease; }
+        .animate-out { animation: popOut 0.3s ease forwards; }
+
+        /* --- 第6页 --- */
+        #page6 { background-image: url('页面6.png'); display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        .certificate-text { 
+            position: absolute; top: 23%; left: 15%; width: 70%; height: 36%;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            text-align: center; font-weight: bold; color: #5c3a21; line-height: 1.8;
+        }
+        .cert-name-row { font-size: 22px; color: #5c3a21; margin-bottom: 8px; }
+        .cert-college { font-size: 16px; margin-bottom: 12px; color: #333; }
+        .cert-msg { font-size: 16px; color: #333; }
+    </style>
+</head>
+<body>
+
+    <audio id="bgm" src="music.mp3" loop></audio>
+
+    <div class="modal-overlay" id="info-modal">
+        <div class="modal-content">
+            <h3>请输入您的信息</h3>
+            <input type="text" id="input-name" placeholder="请输入姓名">
+            <select id="input-college">
+                <option value="">请选择学院</option>
+                <option value="电子技术与工程学院">电子技术与工程学院</option>
+                <option value="通信与信息工程学院">通信与信息工程学院</option>
+                <option value="机械与能源工程学院">机械与能源工程学院</option>
+                <option value="经济与管理学院">经济与管理学院</option>
+                <option value="中德工程学院">中德工程学院</option>
+                <option value="设计与艺术学院">设计与艺术学院</option>
+                <option value="外语学院">外语学院</option>
+                <option value="申安网络安全产业学院">申安网络安全产业学院</option>
+                <option value="消防救援与贯通学院">消防救援与贯通学院</option>
+            </select>
+            <button id="confirm-btn">确定并开始</button>
+        </div>
+    </div>
+
+    <div id="app">
+        <div class="page" id="page1">
+            <img src="go.png" id="start-btn" alt="开始">
+        </div>
+
+        <div class="page" id="page2">
+            <div class="scroll-list" id="drag-area-1"></div>
+            <div class="trash-bins">
+                <div class="bin-wrapper"><img src="bin_blue.png" data-type="recycle"></div>
+                <div class="bin-wrapper"><img src="bin_green.png" data-type="wet"></div>
+                <div class="bin-wrapper"><img src="bin_orange.png" data-type="harmful"></div>
+                <div class="bin-wrapper"><img src="bin_gray.png" data-type="dry"></div>
+            </div>
+        </div>
+
+        <div class="page" id="page3">
+            <div class="book-text-area">
+                <p id="text3">过期隐形眼镜护理液浸泡银饰5分钟，污垢就会析出，耳钉表面残留的脏东西直接用纸巾擦拭干净。</p>
+            </div>
+            <img src="red2.png" class="like-btn" id="like3" onclick="toggleLike(this, 3)">
+            <img src="箭头.png" class="next-arrow" onclick="goToNextPage()">
+        </div>
+
+        <div class="page" id="page4">
+            <div class="book-text-area">
+                <!-- 💡 核心修复：加上了 id="text4" -->
+                <p id="text4">破损的旧橡胶手套别丢掉，剪下指尖套在椅腿防滑静音，剪下手掌部分垫在菜板下方，避免菜板滑动。</p>
+            </div>
+            <img src="red2.png" class="like-btn" id="like4" onclick="toggleLike(this, 4)">
+        </div>
+
+        <div class="page" id="page5">
+            <div class="score-board">已消除次数: <span id="score">0</span> / 10</div>
+            <div class="game-board" id="game-board"></div>
+        </div>
+
+        <div class="page" id="page6">
+            <div class="certificate-text">
+                <div class="cert-name-row"><span id="cert-name">未填写</span> 同学</div>
+                <div class="cert-college" id="cert-college">未填写</div>
+                <div class="cert-msg">恭喜你完成环保闯关！<br></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 全局变量 ---
+        let currentPage = 0;
+        const totalPages = 6;
+        const app = document.getElementById('app');
+        const bgm = document.getElementById('bgm');
+
+        // --- 翻页控制 ---
+        let startY = 0, startX = 0;
+        let isSwiping = false;
+
+        document.addEventListener('touchstart', e => {
+            if (e.target.closest('.scroll-list') || e.target.closest('.game-board') || e.target.closest('.drag-item') || e.target.closest('.like-btn') || e.target.closest('.next-arrow')) {
+                isSwiping = true; return;
+            }
+            isSwiping = false; 
+            startY = e.touches[0].clientY;
+            startX = e.touches[0].clientX;
+        }, {passive: false});
+
+        document.addEventListener('touchend', e => {
+            if (isSwiping) return;
+            let endY = e.changedTouches[0].clientY;
+            let endX = e.changedTouches[0].clientX;
+            let diffY = startY - endY;
+            let diffX = startX - endX;
+
+            if (Math.abs(diffY) > 60 && Math.abs(diffY) > Math.abs(diffX)) {
+                if (diffY > 0 && currentPage < 5) { currentPage++; updatePagePosition(); }
+                else if (diffY < 0 && currentPage > 0) { currentPage--; updatePagePosition(); }
+            }
+        }, {passive: false});
+
+        // 鼠标兼容
+        document.addEventListener('mousedown', e => {
+            if (e.target.closest('.scroll-list') || e.target.closest('.game-board') || e.target.closest('.drag-item') || e.target.closest('.like-btn') || e.target.closest('.next-arrow')) {
+                isSwiping = true; return;
+            }
+            isSwiping = false; startY = e.clientY; startX = e.clientX;
+        });
+        document.addEventListener('mouseup', e => {
+            if (isSwiping) return;
+            let diffY = startY - e.clientY;
+            let diffX = startX - e.clientX;
+            if (Math.abs(diffY) > 60 && Math.abs(diffY) > Math.abs(diffX)) {
+                if (diffY > 0 && currentPage < 5) { currentPage++; updatePagePosition(); }
+                else if (diffY < 0 && currentPage > 0) { currentPage--; updatePagePosition(); }
+            }
+        });
+
+        function updatePagePosition() {
+            app.style.transform = `translateY(-${currentPage * 100}vh)`;
+            if(currentPage === 5) {
+                document.getElementById('cert-name').innerText = localStorage.getItem('userName') || '未填写';
+                document.getElementById('cert-college').innerText = localStorage.getItem('userCollege') || '未填写';
+            }
+        }
+
+        // --- 弹窗交互 ---
+        const modal = document.getElementById('info-modal');
+        document.getElementById('start-btn').addEventListener('click', (e) => { 
+            e.stopPropagation(); modal.classList.add('show'); 
+        });
+        document.getElementById('confirm-btn').addEventListener('click', () => {
+            const name = document.getElementById('input-name').value.trim();
+            const college = document.getElementById('input-college').value;
+            if(!name || !college) { alert("请填写姓名并选择学院！"); return; }
+            localStorage.setItem('userName', name);
+            localStorage.setItem('userCollege', college);
+            modal.classList.remove('show');
+            bgm.play().catch(e => console.log("音乐被拦截"));
+            currentPage = 1; updatePagePosition();
+        });
+
+        // --- 第3、4页数据 ---
+        const tips3 = [
+            "过期隐形眼镜护理液浸泡银饰5分钟，污垢就会析出，耳钉表面残留的脏东西直接用纸巾擦拭干净。",
+            "衣服上很难洗净的辣椒油渍，可以放到太阳下暴晒，紫外线能够分解辣椒素，让油渍慢慢消失，亲测效果很不错。",
+            "洗衣凝珠盒撕掉标签，用纳米胶固定在柜门下方，套上塑料袋就是悬挂小垃圾桶；在底部扎上小孔，还能直接当作小花盆使用。"
+        ];
+        const tips4 = [
+            "破损的旧橡胶手套别丢掉，剪下指尖套在椅腿防滑静音，剪下手掌部分垫在菜板下方，避免菜板滑动。",
+            "用衣架搭配床帘链条，就能在床头搭建简易小影院，安静夜晚沉浸式看片，氛围感满满。",
+            "快递箱、牛奶箱简单裁剪，贴上贴纸或者包装纸，改造为书立或是抽屉分隔盒，收纳各类零碎小物件。"
+        ];
+
+        let idx3 = 0, idx4 = 0;
+        let liked3 = [false, false, false];
+        let liked4 = [false, false, false];
+
+        function toggleLike(imgElement, pageNum) {
+            if (pageNum === 3) {
+                liked3[idx3] = !liked3[idx3];
+                imgElement.src = liked3[idx3] ? 'red.png' : 'red2.png';
+            } else {
+                liked4[idx4] = !liked4[idx4];
+                imgElement.src = liked4[idx4] ? 'red.png' : 'red2.png';
+            }
+        }
+
+        function goToNextPage() {
+            if (currentPage < 5) {
+                currentPage++;
+                updatePagePosition();
+            }
+        }
+
+        function switchText(pageNum, direction) {
+            const textEl = document.getElementById(`text${pageNum}`);
+            const likeEl = document.getElementById(`like${pageNum}`);
+            const tips = pageNum === 3 ? tips3 : tips4;
+            const likedArr = pageNum === 3 ? liked3 : liked4;
+            let currentIdx = pageNum === 3 ? idx3 : idx4;
+
+            if (direction > 0 && currentIdx >= tips.length - 1) {
+                if (pageNum === 3) { goToNextPage(); } 
+                else { currentPage = 4; updatePagePosition(); }
+                return;
+            }
+            if (direction < 0 && currentIdx <= 0) {
+                if (pageNum === 4) { currentPage = 3; updatePagePosition(); }
+                return;
+            }
+
+            if (pageNum === 3) idx3 += direction;
+            else idx4 += direction;
+            
+            const newIdx = pageNum === 3 ? idx3 : idx4;
+
+            textEl.classList.add('fade-out');
+            setTimeout(() => {
+                textEl.innerText = tips[newIdx];
+                likeEl.src = likedArr[newIdx] ? 'red.png' : 'red2.png';
+                textEl.classList.remove('fade-out');
+            }, 300); 
+        }
+
+        // 绑定第3、4页滑动事件
+        let tsX = 0, tsY = 0;
+        document.getElementById('page3').addEventListener('touchstart', e => { tsX = e.touches[0].clientX; tsY = e.touches[0].clientY; }, {passive: false});
+        document.getElementById('page3').addEventListener('touchend', e => {
+            let dX = tsX - e.changedTouches[0].clientX;
+            let dY = tsY - e.changedTouches[0].clientY;
+            if (Math.abs(dX) > 40 && Math.abs(dX) > Math.abs(dY)) {
+                switchText(3, dX > 0 ? 1 : -1); 
+            }
+        }, {passive: false});
+
+        document.getElementById('page4').addEventListener('touchstart', e => { tsX = e.touches[0].clientX; tsY = e.touches[0].clientY; }, {passive: false});
+        // 💡 第4页滑动：左右滑切换文案
+        document.getElementById('page4').addEventListener('touchend', e => {
+            let dX = tsX - e.changedTouches[0].clientX;
+            let dY = tsY - e.changedTouches[0].clientY;
+            
+            // 只有明显的左右滑动才触发内部切页
+            if (Math.abs(dX) > 40 && Math.abs(dX) > Math.abs(dY)) {
+                // dX > 0 代表向左滑（看下一个），dX < 0 代表向右滑（看上一个）
+                switchText(4, dX > 0 ? 1 : -1); 
+            }
+        }, {passive: false});
+
+        // --- 第2页拖拽 ---
+        const trashData = [
+            { img: 'item_banana.png', type: 'wet' }, { img: 'item_orange.png', type: 'wet' }, { img: 'item_peel.png', type: 'wet' },   
+            { img: 'item_popcorn.png', type: 'wet' }, { img: 'item_battery.png', type: 'harmful' }, { img: 'item_medicline.png', type: 'harmful' },
+            { img: 'item_bottle.png', type: 'recycle' }, { img: 'item_box.png', type: 'recycle' }, { img: 'item_can.png', type: 'recycle' }       
+        ];
+        let totalItems = trashData.length;
+        let correctlyPlaced = 0;
+        let cloneElement = null, originalElement = null;
+        let touchOffsetX = 0, touchOffsetY = 0;
+
+        function initDragGame() {
+            const area = document.getElementById('drag-area-1');
+            trashData.sort(() => Math.random() - 0.5);
+            trashData.forEach((item) => {
+                const card = document.createElement('div');
+                card.className = 'drag-item'; card.dataset.type = item.type;
+                const img = document.createElement('img'); img.src = item.img;
+                card.appendChild(img); area.appendChild(card);
+                card.addEventListener('pointerdown', handleDragStart);
+            });
+            document.addEventListener('pointermove', handleDragMove);
+            document.addEventListener('pointerup', handleDrop);
+        }
+
+        function handleDragStart(e) {
+            originalElement = e.target.closest('.drag-item');
+            if(!originalElement) return;
+            e.preventDefault(); 
+            const rect = originalElement.getBoundingClientRect();
+            cloneElement = originalElement.cloneNode(true);
+            cloneElement.classList.add('dragging');
+            cloneElement.style.position = 'fixed';
+            cloneElement.style.width = rect.width + 'px'; cloneElement.style.height = rect.height + 'px';
+            cloneElement.style.left = rect.left + 'px'; cloneElement.style.top = rect.top + 'px';
+            cloneElement.style.zIndex = 99999; cloneElement.style.pointerEvents = 'none';
+            document.body.appendChild(cloneElement);
+            touchOffsetX = e.clientX - rect.left; touchOffsetY = e.clientY - rect.top;
+            originalElement.style.opacity = '0.3';
+            window.isDraggingItem = true;
+        }
+
+        function handleDragMove(e) {
+            if (!cloneElement) return;
+            e.preventDefault(); 
+            cloneElement.style.left = (e.clientX - touchOffsetX) + 'px';
+            cloneElement.style.top = (e.clientY - touchOffsetY) + 'px';
+        }
+
+        function handleDrop(e) {
+            if (!cloneElement || !originalElement) return;
+            const bins = document.querySelectorAll('.trash-bins img');
+            let droppedInBin = null;
+            bins.forEach(bin => {
+                const rect = bin.getBoundingClientRect();
+                if (e.clientX >= rect.left - 30 && e.clientX <= rect.right + 30 && e.clientY >= rect.top - 30 && e.clientY <= rect.bottom + 30) { droppedInBin = bin; }
+            });
+
+            if (droppedInBin && droppedInBin.dataset.type === originalElement.dataset.type) {
+                originalElement.style.display = 'none'; cloneElement.remove(); correctlyPlaced++;
+                if (correctlyPlaced >= totalItems) { setTimeout(() => { currentPage = 2; updatePagePosition(); }, 500); }
+            } else if (droppedInBin) {
+                cloneElement.remove(); originalElement.style.opacity = '1';
+                const page2 = document.getElementById('page2');
+                page2.classList.add('shake-anim'); setTimeout(() => { page2.classList.remove('shake-anim'); }, 500);
+            } else {
+                cloneElement.remove(); originalElement.style.opacity = '1';
+            }
+            cloneElement = null; originalElement = null; window.isDraggingItem = false;
+        }
+        initDragGame();
+
+        // --- 消消乐 ---
+        const boardEl = document.getElementById('game-board');
+        const scoreEl = document.getElementById('score');
+        const icons = ['eliminate1.png', 'eliminate2.png', 'eliminate3.png', 'eliminate4.png', 'eliminate5.png', 'eliminate6.png'];
+        const ROWS = 4; const COLS = 5;
+        let grid = []; let score = 0; let isAnimating = false; let firstClick = null;
+
+        function initGame() {
+            boardEl.innerHTML = ''; score = 0; scoreEl.innerText = score; grid = [];
+            for (let r = 0; r < ROWS; r++) {
+                grid[r] = [];
+                for (let c = 0; c < COLS; c++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell'; cell.dataset.r = r; cell.dataset.c = c;
+                    cell.onclick = () => handleCellClick(r, c);
+                    const img = document.createElement('img');
+                    let randomIcon;
+                    do { randomIcon = icons[Math.floor(Math.random() * icons.length)]; } 
+                    while ((c >= 2 && grid[r][c-1] === randomIcon && grid[r][c-2] === randomIcon) || (r >= 2 && grid[r-1][c] === randomIcon && grid[r-2][c] === randomIcon));
+                    img.src = randomIcon; img.classList.add('animate-in');
+                    cell.appendChild(img); boardEl.appendChild(cell); grid[r][c] = randomIcon;
+                }
+            }
+        }
+
+        function handleCellClick(r, c) {
+            if (isAnimating) return;
+            const currentCell = boardEl.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
+            if (!firstClick) {
+                firstClick = { r, c, el: currentCell }; currentCell.classList.add('selected');
+            } else {
+                if (firstClick.r === r && firstClick.c === c) { firstClick.el.classList.remove('selected'); firstClick = null; return; }
+                if (Math.abs(firstClick.r - r) + Math.abs(firstClick.c - c) === 1) {
+                    firstClick.el.classList.remove('selected'); swapLogic(firstClick.r, firstClick.c, r, c); firstClick = null;
+                } else {
+                    firstClick.el.classList.remove('selected'); firstClick = { r, c, el: currentCell }; currentCell.classList.add('selected');
+                }
+            }
+        }
+
+        async function swapLogic(r1, c1, r2, c2) {
+            isAnimating = true; swapData(r1, c1, r2, c2); updateDOM();
+            await new Promise(res => setTimeout(res, 200));
+            let matches = checkMatches();
+            if (matches.length > 0) { await processMatches(matches); } 
+            else { swapData(r1, c1, r2, c2); updateDOM(); await new Promise(res => setTimeout(res, 200)); }
+            isAnimating = false;
+        }
+
+        function swapData(r1, c1, r2, c2) { let temp = grid[r1][c1]; grid[r1][c1] = grid[r2][c2]; grid[r2][c2] = temp; }
+
+        function updateDOM() {
+            for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+                const img = boardEl.querySelector(`.cell[data-r="${r}"][data-c="${c}"] img`);
+                if (img.src.indexOf(grid[r][c]) === -1) img.src = grid[r][c];
+            }
+        }
+
+        function checkMatches() {
+            let matches = [];
+            for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS - 2; c++) {
+                if (grid[r][c] && grid[r][c] === grid[r][c+1] && grid[r][c] === grid[r][c+2]) matches.push({r, c}, {r, c: c+1}, {r, c: c+2});
+            }
+            for (let c = 0; c < COLS; c++) for (let r = 0; r < ROWS - 2; r++) {
+                if (grid[r][c] && grid[r][c] === grid[r+1][c] && grid[r][c] === grid[r+2][c]) matches.push({r, c}, {r: r+1, c}, {r: r+2, c});
+            }
+            return Array.from(new Set(matches.map(m => `${m.r}-${m.c}`))).map(str => { const [r, c] = str.split('-').map(Number); return {r, c}; });
+        }
+
+        async function processMatches(matches) {
+            matches.forEach(m => {
+                const img = boardEl.querySelector(`.cell[data-r="${m.r}"][data-c="${m.c}"] img`);
+                if (img) img.classList.add('animate-out');
+            });
+            await new Promise(res => setTimeout(res, 300));
+            score++; scoreEl.innerText = score;
+            matches.forEach(m => { grid[m.r][m.c] = null; });
+            
+            if (score >= 10) { setTimeout(() => { currentPage = 5; updatePagePosition(); }, 500); return; }
+            
+            await dropAndRefill();
+            let nextMatches = checkMatches();
+            if (nextMatches.length > 0) await processMatches(nextMatches);
+        }
+
+        async function dropAndRefill() {
+            for (let c = 0; c < COLS; c++) {
+                let emptySpaces = 0;
+                for (let r = ROWS - 1; r >= 0; r--) {
+                    if (grid[r][c] === null) emptySpaces++;
+                    else if (emptySpaces > 0) { grid[r + emptySpaces][c] = grid[r][c]; grid[r][c] = null; }
+                }
+                for (let r = 0; r < emptySpaces; r++) grid[r][c] = icons[Math.floor(Math.random() * icons.length)];
+            }
+            for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+                const img = boardEl.querySelector(`.cell[data-r="${r}"][data-c="${c}"] img`);
+                img.className = ''; img.src = grid[r][c]; img.classList.add('animate-in'); 
+            }
+            await new Promise(res => setTimeout(res, 300));
+            
+            if (checkMatches().length === 0 && !checkPossibleMove()) {
+                console.log("无解，自动打乱");
+                await shuffleBoard();
+            }
+        }
+
+        function checkPossibleMove() {
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    if (c < COLS - 1) {
+                        swapData(r, c, r, c + 1);
+                        let hasMatch = checkMatches().length > 0;
+                        swapData(r, c, r, c + 1);
+                        if (hasMatch) return true;
+                    }
+                    if (r < ROWS - 1) {
+                        swapData(r, c, r + 1, c);
+                        let hasMatch = checkMatches().length > 0;
+                        swapData(r, c, r + 1, c);
+                        if (hasMatch) return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        async function shuffleBoard() {
+            isAnimating = true;
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    grid[r][c] = icons[Math.floor(Math.random() * icons.length)];
+                    const img = boardEl.querySelector(`.cell[data-r="${r}"][data-c="${c}"] img`);
+                    img.className = ''; img.src = grid[r][c]; img.classList.add('animate-in');
+                }
+            }
+            await new Promise(res => setTimeout(res, 300));
+            let matches = checkMatches();
+            if (matches.length > 0) await processMatches(matches);
+            isAnimating = false;
+        }
+
+        initGame();
+    </script>
+</body>
+</html>
